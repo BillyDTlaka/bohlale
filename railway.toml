@@ -1,0 +1,12 @@
+[build]
+builder = "nixpacks"
+buildCommand = "npm run build && npx prisma generate"
+
+[deploy]
+startCommand = "npx prisma migrate deploy && node dist/server.js"
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+
+[environments.production.variables]
+NODE_ENV = "production"
+PORT = "4000"

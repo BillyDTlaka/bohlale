@@ -30,6 +30,9 @@ export async function buildApp() {
     decorateReply: false,
   })
 
+  // ── Health check ───────────────────────────────────────────────────────────
+  fastify.get('/health', async () => ({ ok: true, ts: new Date().toISOString() }))
+
   // ── API routes ─────────────────────────────────────────────────────────────
   await fastify.register(projectRoutes,    { prefix: '/projects' })
   await fastify.register(agentRoutes,      { prefix: '/agents' })
