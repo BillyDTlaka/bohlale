@@ -3,10 +3,9 @@ builder = "nixpacks"
 buildCommand = "npm run build && npx prisma generate --schema prisma/schema.prisma"
 
 [deploy]
-startCommand = "npx prisma migrate deploy --schema prisma/schema.prisma && node dist/server.js"
+startCommand = "npx prisma migrate deploy --schema prisma/schema.prisma; node dist/server.js"
 healthcheckPath = "/health"
-healthcheckTimeout = 30
+healthcheckTimeout = 60
 
 [environments.production.variables]
 NODE_ENV = "production"
-PORT = "4000"
