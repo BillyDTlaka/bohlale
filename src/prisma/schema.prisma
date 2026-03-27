@@ -1,0 +1,159 @@
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "linux-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Projects ─────────────────────────────────────────────────────────────────
+
+model Project {
+  id        String   @id @default(cuid())
+  name      String
+  apiKey    String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  agents            Agent[]
+  boardMeetings     BoardMeeting[]
+  strategies        Strategy[]
+  chatConversations ChatConversation[]
+  knowledgeDocs     KnowledgeDocument[]
+  dataSources       DataSource[]
+}
+
+// ─── Agents ───────────────────────────────────────────────────────────────────
+
+model Agent {
+  id           String   @id @default(cuid())
+  projectId    String
+  name         String
+  slug         String
+  description  String?
+  systemPrompt String
+  model        String   @default("claude-sonnet-4-6")
+  maxTokens    Int      @default(4096)
+  enabledTools Json     @default("[]")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  project       Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  conversations AgentConversation[]
+
+  @@unique([projectId, slug])
+}
+
+model AgentConversation {
+  id        String   @id @default(cuid())
+  agentId   String
+  projectId String
+  title     String   @default("New Conversation")
+  messages  Json     @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+}
+
+// ─── Board Meetings ───────────────────────────────────────────────────────────
+
+model BoardMeeting {
+  id            String   @id @default(cuid())
+  projectId     String
+  periodDays    Int      @default(30)
+  debateEnabled Boolean  @default(false)
+  status        String   @default("RUNNING")  // RUNNING | COMPLETED | FAILED
+  snapshotJson  Json?
+  reportJson    Json?
+  errorMessage  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+// ─── Strategy ─────────────────────────────────────────────────────────────────
+
+model Strategy {
+  id             String            @id @default(cuid())
+  projectId      String
+  title          String
+  status         String            @default("GENERATING") // GENERATING | DRAFT | REVIEW | APPROVED | ARCHIVED
+  currentVersion Int               @default(1)
+  contentJson    Json?
+  contextJson    Json              @default("{}")
+  errorMessage   String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  project  Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  versions StrategyVersion[]
+}
+
+model StrategyVersion {
+  id         String   @id @default(cuid())
+  strategyId String
+  version    Int
+  contentJson Json
+  changeNote String?
+  createdAt  DateTime @default(now())
+
+  strategy Strategy @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+}
+
+// ─── Chat ─────────────────────────────────────────────────────────────────────
+
+model ChatConversation {
+  id        String        @id @default(cuid())
+  projectId String
+  title     String        @default("New Chat")
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  project  Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+}
+
+model ChatMessage {
+  id             String           @id @default(cuid())
+  conversationId String
+  role           String           // user | assistant
+  content        String
+  createdAt      DateTime         @default(now())
+
+  conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+}
+
+model KnowledgeDocument {
+  id          String   @id @default(cuid())
+  projectId   String
+  name        String
+  description String?
+  content     String
+  fileType    String   @default("text")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+// ─── Data Sources ─────────────────────────────────────────────────────────────
+
+model DataSource {
+  id        String   @id @default(cuid())
+  projectId String
+  name      String
+  type      String   // postgres | csv | excel | api
+  config    Json     @default("{}") // connection string (encrypted), url, etc.
+  isActive  Boolean  @default(true)
+  lastSyncAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}

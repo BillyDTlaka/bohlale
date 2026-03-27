@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bohlale — AI Agent Service</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Scrollbar styling */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #1e293b; }
+    ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+    .tab-btn { transition: all 0.15s; }
+    .tab-btn.active { @apply bg-indigo-600 text-white; }
+    pre { white-space: pre-wrap; word-break: break-word; }
+    .fade-in { animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    .spinner { border: 2px solid #334155; border-top-color: #6366f1; border-radius: 50%; width: 18px; height: 18px; animation: spin 0.7s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans">
+
+<!-- ── Sidebar + Main layout ─────────────────────────────────────────────── -->
+<div class="flex h-screen overflow-hidden">
+
+  <!-- Sidebar -->
+  <aside class="w-56 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0">
+    <div class="p-4 border-b border-slate-800">
+      <h1 class="text-lg font-bold text-indigo-400 tracking-tight">Bohlale</h1>
+      <p class="text-xs text-slate-500 mt-0.5">AI Agent Service</p>
+    </div>
+
+    <!-- Project selector -->
+    <div class="px-3 py-3 border-b border-slate-800">
+      <label class="text-xs text-slate-500 uppercase tracking-wider block mb-1">Project</label>
+      <select id="projectSelect" class="w-full bg-slate-800 border border-slate-700 rounded-md text-sm px-2 py-1.5 text-slate-100 focus:outline-none focus:border-indigo-500">
+        <option value="">— select —</option>
+      </select>
+      <p class="text-xs text-slate-600 mt-1 truncate" id="apiKeyDisplay"></p>
+    </div>
+
+    <!-- Nav -->
+    <nav class="flex-1 overflow-y-auto py-2">
+      <div id="navItems" class="space-y-0.5 px-2">
+        <button onclick="showSection('agents')"    class="nav-btn w-full text-left px-3 py-2 rounded-md text-sm text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2"><span>🤖</span> Agents</button>
+        <button onclick="showSection('chat')"      class="nav-btn w-full text-left px-3 py-2 rounded-md text-sm text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2"><span>💬</span> Chat</button>
+        <button onclick="showSection('strategy')"  class="nav-btn w-full text-left px-3 py-2 rounded-md text-sm text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2"><span>📐</span> Strategy</button>
+        <button onclick="showSection('board')"     class="nav-btn w-full text-left px-3 py-2 rounded-md text-sm text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2"><span>🏛</span> Board</button>
+        <button onclick="showSection('datasources')" class="nav-btn w-full text-left px-3 py-2 rounded-md text-sm text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2"><span>🗄</span> Data Sources</button>
+        <button onclick="showSection('documents')" class="nav-btn w-full text-left px-3 py-2 rounded-md text-sm text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2"><span>📄</span> Documents</button>
+        <div class="border-t border-slate-800 my-2"></div>
+        <button onclick="showSection('projects')"  class="nav-btn w-full text-left px-3 py-2 rounded-md text-sm text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2"><span>⚙️</span> Projects</button>
+      </div>
+    </nav>
+  </aside>
+
+  <!-- Main content -->
+  <main class="flex-1 overflow-y-auto bg-slate-950">
+
+    <!-- ── AGENTS section ── -->
+    <section id="section-agents" class="hidden p-6 fade-in">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-semibold">Agents</h2>
+        <button onclick="openAgentModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded-lg">+ New Agent</button>
+      </div>
+      <div id="agentsList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+    </section>
+
+    <!-- ── CHAT section ── -->
+    <section id="section-chat" class="hidden h-full flex flex-col fade-in">
+      <div class="flex h-full">
+        <!-- Conversation list -->
+        <div class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0">
+          <div class="p-3 border-b border-slate-800 flex items-center justify-between">
+            <span class="text-sm font-medium">Conversations</span>
+            <button onclick="newConversation()" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-2 py-1 rounded">+ New</button>
+          </div>
+          <div id="convList" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
+        </div>
+        <!-- Chat area -->
+        <div class="flex-1 flex flex-col">
+          <div id="chatMessages" class="flex-1 overflow-y-auto p-6 space-y-4">
+            <p class="text-slate-500 text-sm text-center mt-20">Select or create a conversation</p>
+          </div>
+          <div class="p-4 border-t border-slate-800 flex gap-3">
+            <textarea id="chatInput" rows="2" placeholder="Type a message…" class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:border-indigo-500 text-slate-100"></textarea>
+            <button onclick="sendMessage()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 rounded-lg text-sm self-end py-2">Send</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── STRATEGY section ── -->
+    <section id="section-strategy" class="hidden p-6 fade-in">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-semibold">Strategy</h2>
+        <button onclick="generateStrategy()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded-lg">+ Generate</button>
+      </div>
+      <div id="strategyList" class="space-y-3"></div>
+      <div id="strategyDetail" class="hidden mt-6 bg-slate-900 border border-slate-800 rounded-xl p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 id="strategyTitle" class="text-lg font-semibold"></h3>
+          <div class="flex gap-2">
+            <button onclick="refineStrategy()" class="text-sm bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg">Refine</button>
+            <button onclick="closeStrategyDetail()" class="text-sm text-slate-400 hover:text-white px-3 py-1.5">Close</button>
+          </div>
+        </div>
+        <div id="strategyContent" class="prose prose-invert max-w-none text-sm text-slate-300 leading-relaxed"></div>
+      </div>
+    </section>
+
+    <!-- ── BOARD section ── -->
+    <section id="section-board" class="hidden p-6 fade-in">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-semibold">Board Meetings</h2>
+        <button onclick="openBoardModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded-lg">+ Run Meeting</button>
+      </div>
+      <div id="boardList" class="space-y-3"></div>
+      <div id="boardDetail" class="hidden mt-6 bg-slate-900 border border-slate-800 rounded-xl p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold">Meeting Report</h3>
+          <button onclick="closeBoardDetail()" class="text-sm text-slate-400 hover:text-white">Close</button>
+        </div>
+        <div id="boardContent" class="text-sm text-slate-300 leading-relaxed"></div>
+      </div>
+    </section>
+
+    <!-- ── DATA SOURCES section ── -->
+    <section id="section-datasources" class="hidden p-6 fade-in">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-semibold">Data Sources</h2>
+        <button onclick="openDsModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded-lg">+ Add Source</button>
+      </div>
+      <div id="dsList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+    </section>
+
+    <!-- ── DOCUMENTS section ── -->
+    <section id="section-documents" class="hidden p-6 fade-in">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-semibold">Knowledge Documents</h2>
+        <button onclick="openDocModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded-lg">+ Add Document</button>
+      </div>
+      <div id="docsList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+    </section>
+
+    <!-- ── PROJECTS section ── -->
+    <section id="section-projects" class="hidden p-6 fade-in">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-semibold">Projects</h2>
+        <button onclick="openProjectModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded-lg">+ New Project</button>
+      </div>
+      <div class="mb-4 flex gap-3 items-center">
+        <label class="text-sm text-slate-400">Admin Secret:</label>
+        <input id="adminSecretInput" type="password" placeholder="Enter admin secret…" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-indigo-500 w-64" oninput="saveAdminSecret()" />
+      </div>
+      <div id="projectsList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+  MODALS
+══════════════════════════════════════════════════════════════════════════ -->
+
+<!-- Agent Modal -->
+<div id="agentModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+  <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
+    <h3 id="agentModalTitle" class="text-lg font-semibold mb-5">New Agent</h3>
+    <div class="space-y-4">
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Name *</label>
+          <input id="agentName" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" placeholder="e.g. Sales Analyst" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Slug *</label>
+          <input id="agentSlug" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" placeholder="e.g. sales-analyst" />
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">Description</label>
+        <input id="agentDesc" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" placeholder="What does this agent do?" />
+      </div>
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">System Prompt *</label>
+        <textarea id="agentPrompt" rows="6" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 font-mono resize-y" placeholder="You are a helpful assistant that…"></textarea>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Model</label>
+          <select id="agentModel" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+            <option value="claude-sonnet-4-6">claude-sonnet-4-6 (default)</option>
+            <option value="claude-opus-4-6">claude-opus-4-6</option>
+            <option value="claude-haiku-4-5-20251001">claude-haiku-4-5</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Max Tokens</label>
+          <input id="agentMaxTokens" type="number" value="4096" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" />
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs text-slate-400 mb-2">Enabled Tools</label>
+        <div id="toolCheckboxes" class="grid grid-cols-2 gap-2"></div>
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 mt-6">
+      <button onclick="closeAgentModal()" class="text-sm text-slate-400 hover:text-white px-4 py-2">Cancel</button>
+      <button onclick="saveAgent()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-5 py-2 rounded-lg">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Agent Chat Modal (single-turn test) -->
+<div id="agentChatModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+  <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-xl p-6">
+    <h3 class="text-lg font-semibold mb-1">Test Agent: <span id="agentChatName" class="text-indigo-400"></span></h3>
+    <p class="text-xs text-slate-500 mb-4">Single-turn stateless test</p>
+    <textarea id="agentChatInput" rows="3" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 resize-none" placeholder="Enter your message…"></textarea>
+    <div id="agentChatResult" class="hidden mt-4 bg-slate-800 rounded-lg p-4 text-sm text-slate-300 leading-relaxed"></div>
+    <div class="flex justify-end gap-3 mt-4">
+      <button onclick="closeAgentChatModal()" class="text-sm text-slate-400 hover:text-white px-4 py-2">Close</button>
+      <button onclick="runAgentChat()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-5 py-2 rounded-lg" id="agentChatBtn">Send</button>
+    </div>
+  </div>
+</div>
+
+<!-- Board Run Modal -->
+<div id="boardModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+  <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
+    <h3 class="text-lg font-semibold mb-5">Run Board Meeting</h3>
+    <p class="text-xs text-slate-400 mb-3">Paste your business snapshot as JSON. Include metrics, KPIs, recent performance data etc.</p>
+    <textarea id="boardSnapshot" rows="12" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-indigo-500 resize-y" placeholder='{ "revenue": 120000, "expenses": 85000, "customers": 342, ... }'></textarea>
+    <div class="flex gap-4 mt-4">
+      <label class="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+        <input type="checkbox" id="boardDebate" class="rounded bg-slate-700" />
+        Enable debate round
+      </label>
+      <div class="flex items-center gap-2">
+        <label class="text-sm text-slate-400">Period (days):</label>
+        <input id="boardPeriod" type="number" value="30" class="w-20 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-indigo-500" />
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 mt-6">
+      <button onclick="closeBoardModal()" class="text-sm text-slate-400 hover:text-white px-4 py-2">Cancel</button>
+      <button onclick="runBoardMeeting()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-5 py-2 rounded-lg">Run Meeting</button>
+    </div>
+  </div>
+</div>
+
+<!-- Data Source Modal -->
+<div id="dsModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+  <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg p-6">
+    <h3 id="dsModalTitle" class="text-lg font-semibold mb-5">Add Data Source</h3>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">Name *</label>
+        <input id="dsName" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" placeholder="e.g. Production DB" />
+      </div>
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">Type *</label>
+        <select id="dsType" onchange="updateDsConfigHint()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+          <option value="postgres">PostgreSQL</option>
+          <option value="csv">CSV</option>
+          <option value="excel">Excel</option>
+          <option value="api">API</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">Config (JSON) <span id="dsConfigHint" class="text-slate-600 ml-1"></span></label>
+        <textarea id="dsConfig" rows="4" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-indigo-500 resize-none" placeholder='{ "connectionString": "postgresql://..." }'></textarea>
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 mt-6">
+      <button onclick="closeDsModal()" class="text-sm text-slate-400 hover:text-white px-4 py-2">Cancel</button>
+      <button onclick="saveDs()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-5 py-2 rounded-lg">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Document Modal -->
+<div id="docModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+  <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-xl p-6">
+    <h3 id="docModalTitle" class="text-lg font-semibold mb-5">Add Document</h3>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">Name *</label>
+        <input id="docName" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" />
+      </div>
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">Description</label>
+        <input id="docDesc" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" />
+      </div>
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">Content *</label>
+        <textarea id="docContent" rows="8" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-indigo-500 resize-y"></textarea>
+      </div>
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">File Type</label>
+        <select id="docFileType" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+          <option value="text">Text</option>
+          <option value="markdown">Markdown</option>
+          <option value="pdf">PDF</option>
+          <option value="csv">CSV</option>
+        </select>
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 mt-6">
+      <button onclick="closeDocModal()" class="text-sm text-slate-400 hover:text-white px-4 py-2">Cancel</button>
+      <button onclick="saveDoc()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-5 py-2 rounded-lg">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Project Modal -->
+<div id="projectModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+  <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6">
+    <h3 class="text-lg font-semibold mb-5">New Project</h3>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">Project Name *</label>
+        <input id="projectName" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" placeholder="e.g. Tlaka Treats" />
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 mt-6">
+      <button onclick="closeProjectModal()" class="text-sm text-slate-400 hover:text-white px-4 py-2">Cancel</button>
+      <button onclick="createProject()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-5 py-2 rounded-lg">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="hidden fixed bottom-6 right-6 bg-slate-800 border border-slate-700 text-sm text-slate-100 px-4 py-3 rounded-xl shadow-xl z-[100] max-w-sm"></div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+  SCRIPT
+══════════════════════════════════════════════════════════════════════════ -->
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+const S = {
+  projects:      [],
+  selectedProject: null,   // { id, name, apiKey }
+  availableTools: [],
+  currentConvId:  null,
+  editingAgentId: null,
+  editingDsId:    null,
+  editingDocId:   null,
+  currentStrategyId: null,
+  agentChatId:    null,
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id)
+const adminSecret = () => $('adminSecretInput').value || localStorage.getItem('bhl_admin') || ''
+
+function saveAdminSecret() {
+  localStorage.setItem('bhl_admin', $('adminSecretInput').value)
+}
+
+function toast(msg, type = 'info') {
+  const el = $('toast')
+  el.textContent = msg
+  el.className = `fixed bottom-6 right-6 text-sm px-4 py-3 rounded-xl shadow-xl z-[100] max-w-sm ${
+    type === 'error' ? 'bg-red-900 border border-red-700 text-red-100' : 'bg-slate-800 border border-slate-700 text-slate-100'
+  }`
+  el.classList.remove('hidden')
+  clearTimeout(el._t)
+  el._t = setTimeout(() => el.classList.add('hidden'), 3500)
+}
+
+async function api(method, path, body, useAdmin = false) {
+  const headers = { 'Content-Type': 'application/json' }
+  if (useAdmin) {
+    headers['X-Admin-Secret'] = adminSecret()
+  } else if (S.selectedProject?.apiKey) {
+    headers['X-Bohlale-Key'] = S.selectedProject.apiKey
+  }
+  const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : undefined })
+  if (res.status === 204) return null
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`)
+  return data
+}
+
+function requireProject() {
+  if (!S.selectedProject) { toast('Select a project first', 'error'); return false }
+  return true
+}
+
+// ── Nav ────────────────────────────────────────────────────────────────────
+let currentSection = null
+
+function showSection(name) {
+  document.querySelectorAll('section[id^="section-"]').forEach(s => s.classList.add('hidden'))
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('bg-slate-800', 'text-white', 'font-medium'))
+  $(`section-${name}`).classList.remove('hidden')
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    if (b.getAttribute('onclick') === `showSection('${name}')`) b.classList.add('bg-slate-800', 'text-white', 'font-medium')
+  })
+  currentSection = name
+  if (name === 'agents')      loadAgents()
+  if (name === 'chat')        { loadConversations(); if ($('section-chat').style.height === '') $('section-chat').style.height = '100%' }
+  if (name === 'strategy')    loadStrategies()
+  if (name === 'board')       loadBoardMeetings()
+  if (name === 'datasources') loadDataSources()
+  if (name === 'documents')   loadDocuments()
+  if (name === 'projects')    { loadProjects(); const saved = localStorage.getItem('bhl_admin'); if (saved) $('adminSecretInput').value = saved }
+}
+
+// ── Projects ───────────────────────────────────────────────────────────────
+async function loadProjects() {
+  try {
+    const data = await api('GET', '/projects', null, true)
+    S.projects = data || []
+    renderProjects()
+    updateProjectSelect()
+  } catch(e) { toast('Could not load projects: ' + e.message, 'error') }
+}
+
+function renderProjects() {
+  $('projectsList').innerHTML = S.projects.map(p => `
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition-colors">
+      <div class="flex items-start justify-between mb-3">
+        <div>
+          <h3 class="font-medium">${p.name}</h3>
+          <span class="text-xs ${p.isActive ? 'text-green-400' : 'text-red-400'}">${p.isActive ? 'Active' : 'Inactive'}</span>
+        </div>
+        <button onclick="rotateKey('${p.id}')" class="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded">Rotate Key</button>
+      </div>
+      <div class="bg-slate-800 rounded-lg px-3 py-2 flex items-center gap-2">
+        <code class="text-xs text-indigo-300 flex-1 truncate" id="key-${p.id}">${p.apiKey}</code>
+        <button onclick="copyKey('${p.id}')" class="text-xs text-slate-400 hover:text-white shrink-0">Copy</button>
+      </div>
+    </div>
+  `).join('')
+}
+
+function updateProjectSelect() {
+  const sel = $('projectSelect')
+  const cur = sel.value
+  sel.innerHTML = '<option value="">— select —</option>' +
+    S.projects.filter(p => p.isActive).map(p =>
+      `<option value="${p.id}" ${cur === p.id ? 'selected' : ''}>${p.name}</option>`
+    ).join('')
+  if (cur) sel.value = cur
+}
+
+$('projectSelect').addEventListener('change', function() {
+  const p = S.projects.find(x => x.id === this.value)
+  S.selectedProject = p || null
+  $('apiKeyDisplay').textContent = p ? `Key: ${p.apiKey.slice(0, 20)}…` : ''
+  localStorage.setItem('bhl_project_id', p?.id || '')
+})
+
+function openProjectModal() { $('projectModal').classList.remove('hidden'); $('projectName').value = '' }
+function closeProjectModal() { $('projectModal').classList.add('hidden') }
+
+async function createProject() {
+  const name = $('projectName').value.trim()
+  if (!name) { toast('Name is required', 'error'); return }
+  try {
+    const p = await api('POST', '/projects', { name }, true)
+    toast(`Project created! API key: ${p.apiKey}`)
+    closeProjectModal()
+    await loadProjects()
+  } catch(e) { toast(e.message, 'error') }
+}
+
+function copyKey(id) {
+  const key = $(`key-${id}`)?.textContent
+  if (key) { navigator.clipboard.writeText(key); toast('API key copied!') }
+}
+
+async function rotateKey(id) {
+  if (!confirm('Rotate this project\'s API key? The old key will stop working immediately.')) return
+  try {
+    const p = await api('POST', `/projects/${id}/rotate-key`, null, true)
+    toast('Key rotated!')
+    await loadProjects()
+    if (S.selectedProject?.id === id) {
+      S.selectedProject.apiKey = p.apiKey
+      $('apiKeyDisplay').textContent = `Key: ${p.apiKey.slice(0, 20)}…`
+    }
+  } catch(e) { toast(e.message, 'error') }
+}
+
+// ── Agents ─────────────────────────────────────────────────────────────────
+async function loadAvailableTools() {
+  if (!S.selectedProject) return
+  try { S.availableTools = await api('GET', '/agents/tools') } catch {}
+}
+
+async function loadAgents() {
+  if (!requireProject()) return
+  await loadAvailableTools()
+  try {
+    const agents = await api('GET', '/agents')
+    $('agentsList').innerHTML = agents.length ? agents.map(renderAgentCard).join('') :
+      '<p class="text-slate-500 text-sm col-span-3">No agents yet. Create one to get started.</p>'
+  } catch(e) { toast(e.message, 'error') }
+}
+
+function renderAgentCard(a) {
+  const statusDot = a.isActive ? 'bg-green-400' : 'bg-slate-600'
+  const tools = (a.enabledTools || []).slice(0, 3).join(', ') + ((a.enabledTools || []).length > 3 ? '…' : '')
+  return `
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition-colors">
+      <div class="flex items-start justify-between mb-2">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full ${statusDot} mt-1"></span>
+          <h3 class="font-medium">${a.name}</h3>
+        </div>
+        <span class="text-xs text-slate-500 font-mono">${a.slug}</span>
+      </div>
+      ${a.description ? `<p class="text-xs text-slate-400 mb-3">${a.description}</p>` : ''}
+      <div class="text-xs text-slate-500 mb-4">
+        <span class="bg-slate-800 px-2 py-0.5 rounded mr-2">${a.model}</span>
+        <span class="text-slate-600">${(a.enabledTools || []).length} tools</span>
+      </div>
+      ${tools ? `<p class="text-xs text-slate-600 mb-4 truncate">Tools: ${tools}</p>` : ''}
+      <div class="flex gap-2">
+        <button onclick="openAgentModal('${a.id}')" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg">Edit</button>
+        <button onclick="openAgentChatModal('${a.id}', '${a.name}')" class="text-xs bg-indigo-700 hover:bg-indigo-600 px-3 py-1.5 rounded-lg">Test Chat</button>
+        <button onclick="deleteAgent('${a.id}')" class="text-xs text-red-400 hover:text-red-300 px-2 py-1.5 ml-auto">Delete</button>
+      </div>
+    </div>
+  `
+}
+
+async function openAgentModal(id = null) {
+  if (!requireProject()) return
+  S.editingAgentId = id
+  await loadAvailableTools()
+  $('agentModalTitle').textContent = id ? 'Edit Agent' : 'New Agent'
+
+  // Render tool checkboxes
+  $('toolCheckboxes').innerHTML = S.availableTools.map(t => `
+    <label class="flex items-start gap-2 cursor-pointer bg-slate-800 rounded-lg px-3 py-2 hover:bg-slate-750">
+      <input type="checkbox" value="${t.name}" class="tool-checkbox mt-0.5 rounded" />
+      <div>
+        <div class="text-xs font-medium text-slate-200">${t.label || t.name}</div>
+        <div class="text-xs text-slate-500">${t.description || ''}</div>
+      </div>
+    </label>
+  `).join('')
+
+  if (id) {
+    try {
+      const a = await api('GET', `/agents/${id}`)
+      $('agentName').value      = a.name
+      $('agentSlug').value      = a.slug
+      $('agentDesc').value      = a.description || ''
+      $('agentPrompt').value    = a.systemPrompt
+      $('agentModel').value     = a.model
+      $('agentMaxTokens').value = a.maxTokens
+      const enabled = a.enabledTools || []
+      document.querySelectorAll('.tool-checkbox').forEach(cb => {
+        cb.checked = enabled.includes(cb.value)
+      })
+    } catch(e) { toast(e.message, 'error'); return }
+  } else {
+    $('agentName').value = $('agentSlug').value = $('agentDesc').value = $('agentPrompt').value = ''
+    $('agentModel').value = 'claude-sonnet-4-6'
+    $('agentMaxTokens').value = '4096'
+  }
+
+  $('agentModal').classList.remove('hidden')
+}
+
+function closeAgentModal() { $('agentModal').classList.add('hidden'); S.editingAgentId = null }
+
+// Auto-slug from name
+$('agentName').addEventListener('input', function() {
+  if (!S.editingAgentId) {
+    $('agentSlug').value = this.value.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+  }
+})
+
+async function saveAgent() {
+  const name         = $('agentName').value.trim()
+  const slug         = $('agentSlug').value.trim()
+  const systemPrompt = $('agentPrompt').value.trim()
+  if (!name || !slug || !systemPrompt) { toast('Name, slug, and system prompt are required', 'error'); return }
+
+  const enabledTools = [...document.querySelectorAll('.tool-checkbox:checked')].map(cb => cb.value)
+  const body = {
+    name, slug, systemPrompt,
+    description:  $('agentDesc').value.trim() || undefined,
+    model:        $('agentModel').value,
+    maxTokens:    Number($('agentMaxTokens').value),
+    enabledTools,
+  }
+
+  try {
+    if (S.editingAgentId) {
+      await api('PATCH', `/agents/${S.editingAgentId}`, body)
+      toast('Agent updated')
+    } else {
+      await api('POST', '/agents', body)
+      toast('Agent created')
+    }
+    closeAgentModal()
+    loadAgents()
+  } catch(e) { toast(e.message, 'error') }
+}
+
+async function deleteAgent(id) {
+  if (!confirm('Delete this agent?')) return
+  try { await api('DELETE', `/agents/${id}`); toast('Agent deleted'); loadAgents() }
+  catch(e) { toast(e.message, 'error') }
+}
+
+// Agent single-turn chat test
+function openAgentChatModal(id, name) {
+  S.agentChatId = id
+  $('agentChatName').textContent = name
+  $('agentChatInput').value = ''
+  $('agentChatResult').classList.add('hidden')
+  $('agentChatModal').classList.remove('hidden')
+}
+function closeAgentChatModal() { $('agentChatModal').classList.add('hidden'); S.agentChatId = null }
+
+async function runAgentChat() {
+  const msg = $('agentChatInput').value.trim()
+  if (!msg) return
+  $('agentChatBtn').innerHTML = '<span class="spinner"></span>'
+  $('agentChatBtn').disabled = true
+  try {
+    const res = await api('POST', `/agents/${S.agentChatId}/chat`, { message: msg })
+    $('agentChatResult').textContent = res.reply
+    $('agentChatResult').classList.remove('hidden')
+  } catch(e) {
+    toast(e.message, 'error')
+  } finally {
+    $('agentChatBtn').innerHTML = 'Send'
+    $('agentChatBtn').disabled = false
+  }
+}
+
+// ── Chat ───────────────────────────────────────────────────────────────────
+async function loadConversations() {
+  if (!requireProject()) return
+  try {
+    const convs = await api('GET', '/chat/conversations')
+    $('convList').innerHTML = convs.map(c => `
+      <button onclick="selectConv('${c.id}')" class="conv-btn w-full text-left px-3 py-2 rounded-lg text-xs hover:bg-slate-800 transition-colors ${S.currentConvId === c.id ? 'bg-slate-800 text-white' : 'text-slate-400'}">
+        <div class="truncate font-medium">${c.title || 'New Chat'}</div>
+        <div class="text-slate-600 mt-0.5">${new Date(c.updatedAt).toLocaleDateString()}</div>
+      </button>
+    `).join('') || '<p class="text-xs text-slate-600 px-3">No conversations</p>'
+  } catch(e) { toast(e.message, 'error') }
+}
+
+async function newConversation() {
+  if (!requireProject()) return
+  try {
+    const c = await api('POST', '/chat/conversations', {})
+    S.currentConvId = c.id
+    await loadConversations()
+    $('chatMessages').innerHTML = ''
+  } catch(e) { toast(e.message, 'error') }
+}
+
+async function selectConv(id) {
+  S.currentConvId = id
+  try {
+    const c = await api('GET', `/chat/conversations/${id}`)
+    renderMessages(c.messages || [])
+    await loadConversations()
+  } catch(e) { toast(e.message, 'error') }
+}
+
+function renderMessages(msgs) {
+  $('chatMessages').innerHTML = msgs.map(m => `
+    <div class="flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}">
+      <div class="max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+        m.role === 'user'
+          ? 'bg-indigo-600 text-white rounded-br-sm'
+          : 'bg-slate-800 text-slate-100 rounded-bl-sm'
+      }"><pre class="font-sans">${escHtml(m.content)}</pre></div>
+    </div>
+  `).join('')
+  $('chatMessages').scrollTop = $('chatMessages').scrollHeight
+}
+
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+
+$('chatInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
+})
+
+async function sendMessage() {
+  if (!requireProject()) return
+  if (!S.currentConvId) { toast('Create or select a conversation first', 'error'); return }
+  const content = $('chatInput').value.trim()
+  if (!content) return
+  $('chatInput').value = ''
+
+  // Optimistically render user msg
+  const existing = $('chatMessages').innerHTML
+  $('chatMessages').innerHTML += `
+    <div class="flex justify-end">
+      <div class="max-w-[75%] bg-indigo-600 text-white rounded-2xl rounded-br-sm px-4 py-3 text-sm leading-relaxed">${escHtml(content)}</div>
+    </div>
+    <div class="flex justify-start" id="streamingMsg">
+      <div class="max-w-[75%] bg-slate-800 text-slate-100 rounded-2xl rounded-bl-sm px-4 py-3 text-sm leading-relaxed"><span class="spinner"></span></div>
+    </div>
+  `
+  $('chatMessages').scrollTop = $('chatMessages').scrollHeight
+
+  // SSE stream
+  const res = await fetch(`/chat/conversations/${S.currentConvId}/message`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Bohlale-Key': S.selectedProject.apiKey },
+    body: JSON.stringify({ content }),
+  })
+
+  const streaming = $('streamingMsg')
+  let fullText = ''
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  while (true) {
+    const { value, done } = await reader.read()
+    if (done) break
+    const chunk = decoder.decode(value)
+    chunk.split('\n').forEach(line => {
+      if (!line.startsWith('data: ')) return
+      const payload = line.slice(6)
+      if (payload === '[DONE]') return
+      try {
+        const obj = JSON.parse(payload)
+        if (obj.text) {
+          fullText += obj.text
+          if (streaming) streaming.querySelector('div').innerHTML = `<pre class="font-sans">${escHtml(fullText)}</pre>`
+          $('chatMessages').scrollTop = $('chatMessages').scrollHeight
+        }
+      } catch {}
+    })
+  }
+}
+
+// ── Strategy ───────────────────────────────────────────────────────────────
+async function loadStrategies() {
+  if (!requireProject()) return
+  try {
+    const list = await api('GET', '/strategy')
+    $('strategyList').innerHTML = list.map(s => `
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 flex items-center justify-between hover:border-slate-700 transition-colors cursor-pointer" onclick="viewStrategy('${s.id}')">
+        <div>
+          <h3 class="font-medium">${s.title}</h3>
+          <div class="flex items-center gap-3 mt-1">
+            <span class="text-xs ${statusColor(s.status)} font-medium">${s.status}</span>
+            <span class="text-xs text-slate-500">v${s.currentVersion}</span>
+            <span class="text-xs text-slate-600">${new Date(s.updatedAt).toLocaleDateString()}</span>
+          </div>
+          ${s.errorMessage ? `<p class="text-xs text-red-400 mt-1">${s.errorMessage}</p>` : ''}
+        </div>
+        <div class="flex gap-2" onclick="event.stopPropagation()">
+          <button onclick="refineStrategyById('${s.id}')" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg">Refine</button>
+          <button onclick="deleteStrategy('${s.id}')" class="text-xs text-red-400 hover:text-red-300 px-2 py-1.5">Delete</button>
+        </div>
+      </div>
+    `).join('') || '<p class="text-slate-500 text-sm">No strategies yet.</p>'
+  } catch(e) { toast(e.message, 'error') }
+}
+
+function statusColor(s) {
+  return s === 'READY' ? 'text-green-400' : s === 'GENERATING' ? 'text-yellow-400' : s === 'FAILED' ? 'text-red-400' : 'text-slate-400'
+}
+
+async function generateStrategy() {
+  if (!requireProject()) return
+  const title = prompt('Strategy title (optional):')
+  try {
+    await api('POST', '/strategy', title ? { title } : {})
+    toast('Generating strategy…')
+    loadStrategies()
+    // Poll until done
+    setTimeout(() => { loadStrategies() }, 10000)
+  } catch(e) { toast(e.message, 'error') }
+}
+
+async function viewStrategy(id) {
+  try {
+    const s = await api('GET', `/strategy/${id}`)
+    S.currentStrategyId = id
+    $('strategyTitle').textContent = s.title
+    $('strategyContent').innerHTML = s.contentJson
+      ? formatStrategyContent(s.contentJson)
+      : `<p class="text-slate-500">${s.status === 'GENERATING' ? 'Generating…' : 'No content yet'}</p>`
+    $('strategyDetail').classList.remove('hidden')
+    $('strategyDetail').scrollIntoView({ behavior: 'smooth' })
+  } catch(e) { toast(e.message, 'error') }
+}
+
+function formatStrategyContent(obj) {
+  if (typeof obj === 'string') return `<pre>${escHtml(obj)}</pre>`
+  return Object.entries(obj).map(([k, v]) =>
+    `<h4 class="font-semibold text-slate-200 mt-4 mb-1 capitalize">${k.replace(/_/g,' ')}</h4>
+     <p>${typeof v === 'object' ? JSON.stringify(v, null, 2) : escHtml(String(v))}</p>`
+  ).join('')
+}
+
+function closeStrategyDetail() { $('strategyDetail').classList.add('hidden') }
+
+async function refineStrategyById(id) {
+  const instructions = prompt('Refinement instructions:')
+  if (!instructions?.trim()) return
+  try {
+    await api('POST', `/strategy/${id}/refine`, { instructions })
+    toast('Refining strategy…')
+    setTimeout(() => loadStrategies(), 10000)
+  } catch(e) { toast(e.message, 'error') }
+}
+
+async function refineStrategy() {
+  if (S.currentStrategyId) refineStrategyById(S.currentStrategyId)
+}
+
+async function deleteStrategy(id) {
+  if (!confirm('Delete this strategy?')) return
+  try { await api('DELETE', `/strategy/${id}`); toast('Strategy deleted'); loadStrategies() }
+  catch(e) { toast(e.message, 'error') }
+}
+
+// ── Board ──────────────────────────────────────────────────────────────────
+async function loadBoardMeetings() {
+  if (!requireProject()) return
+  try {
+    const meetings = await api('GET', '/board/meetings')
+    $('boardList').innerHTML = meetings.map(m => `
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 flex items-center justify-between hover:border-slate-700 transition-colors cursor-pointer" onclick="viewBoardMeeting('${m.id}')">
+        <div>
+          <div class="flex items-center gap-3">
+            <span class="text-sm ${statusColor(m.status)} font-medium">${m.status}</span>
+            <span class="text-xs text-slate-500">${m.periodDays}-day period</span>
+            ${m.debateEnabled ? '<span class="text-xs bg-purple-900 text-purple-300 px-2 py-0.5 rounded">debate</span>' : ''}
+          </div>
+          <p class="text-xs text-slate-600 mt-1">${new Date(m.createdAt).toLocaleString()}</p>
+          ${m.errorMessage ? `<p class="text-xs text-red-400 mt-1">${m.errorMessage}</p>` : ''}
+        </div>
+        <div class="flex gap-2" onclick="event.stopPropagation()">
+          <button onclick="deleteMeeting('${m.id}')" class="text-xs text-red-400 hover:text-red-300 px-2 py-1.5">Delete</button>
+        </div>
+      </div>
+    `).join('') || '<p class="text-slate-500 text-sm">No board meetings yet.</p>'
+  } catch(e) { toast(e.message, 'error') }
+}
+
+function openBoardModal() {
+  if (!requireProject()) return
+  $('boardSnapshot').value = ''
+  $('boardDebate').checked = false
+  $('boardPeriod').value = '30'
+  $('boardModal').classList.remove('hidden')
+}
+function closeBoardModal() { $('boardModal').classList.add('hidden') }
+
+async function runBoardMeeting() {
+  let snapshot
+  try { snapshot = JSON.parse($('boardSnapshot').value) }
+  catch { toast('Snapshot must be valid JSON', 'error'); return }
+  try {
+    await api('POST', '/board/run', {
+      snapshot,
+      periodDays:    Number($('boardPeriod').value),
+      includeDebate: $('boardDebate').checked,
+    })
+    toast('Board meeting started…')
+    closeBoardModal()
+    loadBoardMeetings()
+    setTimeout(() => loadBoardMeetings(), 30000)
+  } catch(e) { toast(e.message, 'error') }
+}
+
+async function viewBoardMeeting(id) {
+  try {
+    const m = await api('GET', `/board/meetings/${id}`)
+    const report = m.reportJson
+    $('boardContent').innerHTML = report
+      ? formatBoardReport(report)
+      : `<p class="text-slate-500">${m.status === 'RUNNING' ? 'Meeting in progress…' : m.errorMessage || 'No report yet'}</p>`
+    $('boardDetail').classList.remove('hidden')
+    $('boardDetail').scrollIntoView({ behavior: 'smooth' })
+  } catch(e) { toast(e.message, 'error') }
+}
+
+function formatBoardReport(report) {
+  if (typeof report === 'string') return `<pre class="text-xs">${escHtml(report)}</pre>`
+  const sections = []
+  if (report.synthesis) sections.push(`<h4 class="font-semibold text-indigo-300 mb-2">Board Synthesis</h4><pre class="text-xs leading-relaxed">${escHtml(report.synthesis)}</pre>`)
+  if (report.advisors) {
+    sections.push('<h4 class="font-semibold text-indigo-300 mt-6 mb-3">Advisor Reports</h4>')
+    Object.entries(report.advisors).forEach(([role, content]) => {
+      sections.push(`<div class="mb-4"><h5 class="text-xs font-semibold uppercase text-slate-400 mb-1">${role}</h5><pre class="text-xs leading-relaxed">${escHtml(String(content))}</pre></div>`)
+    })
+  }
+  if (!sections.length) return `<pre class="text-xs">${escHtml(JSON.stringify(report, null, 2))}</pre>`
+  return sections.join('')
+}
+
+function closeBoardDetail() { $('boardDetail').classList.add('hidden') }
+
+async function deleteMeeting(id) {
+  if (!confirm('Delete this meeting?')) return
+  try { await api('DELETE', `/board/meetings/${id}`); toast('Meeting deleted'); loadBoardMeetings() }
+  catch(e) { toast(e.message, 'error') }
+}
+
+// ── Data Sources ───────────────────────────────────────────────────────────
+async function loadDataSources() {
+  if (!requireProject()) return
+  try {
+    const list = await api('GET', '/datasources')
+    $('dsList').innerHTML = list.map(ds => `
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition-colors">
+        <div class="flex items-start justify-between mb-3">
+          <div>
+            <h3 class="font-medium">${ds.name}</h3>
+            <div class="flex items-center gap-2 mt-1">
+              <span class="text-xs bg-slate-800 px-2 py-0.5 rounded border border-slate-700">${ds.type}</span>
+              <span class="text-xs ${ds.isActive ? 'text-green-400' : 'text-slate-500'}">${ds.isActive ? 'Active' : 'Inactive'}</span>
+            </div>
+          </div>
+          <div class="flex gap-1">
+            <button onclick="openDsModal('${ds.id}')" class="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded">Edit</button>
+            ${ds.type === 'postgres' ? `<button onclick="testDs('${ds.id}')" class="text-xs bg-green-900 hover:bg-green-800 text-green-200 px-2 py-1 rounded">Test</button>` : ''}
+          </div>
+        </div>
+        ${ds.lastSyncAt ? `<p class="text-xs text-slate-600">Last sync: ${new Date(ds.lastSyncAt).toLocaleString()}</p>` : ''}
+        <button onclick="deleteDs('${ds.id}')" class="text-xs text-red-400 hover:text-red-300 mt-3">Delete</button>
+      </div>
+    `).join('') || '<p class="text-slate-500 text-sm col-span-3">No data sources yet.</p>'
+  } catch(e) { toast(e.message, 'error') }
+}
+
+function updateDsConfigHint() {
+  const hints = {
+    postgres: '{ "connectionString": "postgresql://user:pass@host/db" }',
+    csv: '{ "path": "/path/to/file.csv" }',
+    excel: '{ "path": "/path/to/file.xlsx", "sheet": "Sheet1" }',
+    api: '{ "url": "https://...", "headers": {} }',
+  }
+  $('dsConfigHint').textContent = ''
+  $('dsConfig').placeholder = hints[$('dsType').value] || '{}'
+}
+
+async function openDsModal(id = null) {
+  if (!requireProject()) return
+  S.editingDsId = id
+  $('dsModalTitle').textContent = id ? 'Edit Data Source' : 'Add Data Source'
+  if (id) {
+    try {
+      const ds = await api('GET', `/datasources`)
+      const found = (ds || []).find(d => d.id === id)
+      if (found) {
+        $('dsName').value   = found.name
+        $('dsType').value   = found.type
+        $('dsConfig').value = JSON.stringify(found.config || {}, null, 2)
+      }
+    } catch {}
+  } else {
+    $('dsName').value = $('dsConfig').value = ''
+    $('dsType').value = 'postgres'
+  }
+  updateDsConfigHint()
+  $('dsModal').classList.remove('hidden')
+}
+function closeDsModal() { $('dsModal').classList.add('hidden'); S.editingDsId = null }
+
+async function saveDs() {
+  const name = $('dsName').value.trim()
+  const type = $('dsType').value
+  if (!name) { toast('Name is required', 'error'); return }
+  let config = {}
+  try { config = JSON.parse($('dsConfig').value || '{}') } catch { toast('Config must be valid JSON', 'error'); return }
+  try {
+    if (S.editingDsId) {
+      await api('PATCH', `/datasources/${S.editingDsId}`, { name, config })
+      toast('Data source updated')
+    } else {
+      await api('POST', '/datasources', { name, type, config })
+      toast('Data source added')
+    }
+    closeDsModal()
+    loadDataSources()
+  } catch(e) { toast(e.message, 'error') }
+}
+
+async function testDs(id) {
+  try {
+    const r = await api('POST', `/datasources/${id}/test`)
+    toast(r.ok ? `Connected: ${JSON.stringify(r.info || '')}` : `Failed: ${r.error}`, r.ok ? 'info' : 'error')
+  } catch(e) { toast(e.message, 'error') }
+}
+
+async function deleteDs(id) {
+  if (!confirm('Delete this data source?')) return
+  try { await api('DELETE', `/datasources/${id}`); toast('Deleted'); loadDataSources() }
+  catch(e) { toast(e.message, 'error') }
+}
+
+// ── Documents ──────────────────────────────────────────────────────────────
+async function loadDocuments() {
+  if (!requireProject()) return
+  try {
+    const list = await api('GET', '/chat/documents')
+    $('docsList').innerHTML = list.map(d => `
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition-colors">
+        <div class="flex items-start justify-between mb-2">
+          <h3 class="font-medium">${d.name}</h3>
+          <span class="text-xs bg-slate-800 px-2 py-0.5 rounded">${d.fileType}</span>
+        </div>
+        ${d.description ? `<p class="text-xs text-slate-400 mb-3">${d.description}</p>` : ''}
+        <p class="text-xs text-slate-600">${new Date(d.createdAt).toLocaleDateString()}</p>
+        <div class="flex gap-2 mt-3">
+          <button onclick="openDocModal('${d.id}')" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg">Edit</button>
+          <button onclick="deleteDoc('${d.id}')" class="text-xs text-red-400 hover:text-red-300 px-2 py-1.5 ml-auto">Delete</button>
+        </div>
+      </div>
+    `).join('') || '<p class="text-slate-500 text-sm col-span-3">No documents yet.</p>'
+  } catch(e) { toast(e.message, 'error') }
+}
+
+async function openDocModal(id = null) {
+  if (!requireProject()) return
+  S.editingDocId = id
+  $('docModalTitle').textContent = id ? 'Edit Document' : 'Add Document'
+  if (id) {
+    try {
+      const d = await api('GET', `/chat/documents/${id}`)
+      $('docName').value     = d.name
+      $('docDesc').value     = d.description || ''
+      $('docContent').value  = d.content
+      $('docFileType').value = d.fileType || 'text'
+    } catch(e) { toast(e.message, 'error'); return }
+  } else {
+    $('docName').value = $('docDesc').value = $('docContent').value = ''
+    $('docFileType').value = 'text'
+  }
+  $('docModal').classList.remove('hidden')
+}
+function closeDocModal() { $('docModal').classList.add('hidden'); S.editingDocId = null }
+
+async function saveDoc() {
+  const name    = $('docName').value.trim()
+  const content = $('docContent').value.trim()
+  if (!name || !content) { toast('Name and content are required', 'error'); return }
+  const body = { name, content, description: $('docDesc').value.trim() || undefined, fileType: $('docFileType').value }
+  try {
+    if (S.editingDocId) {
+      await api('PATCH', `/chat/documents/${S.editingDocId}`, body)
+      toast('Document updated')
+    } else {
+      await api('POST', '/chat/documents', body)
+      toast('Document added')
+    }
+    closeDocModal()
+    loadDocuments()
+  } catch(e) { toast(e.message, 'error') }
+}
+
+async function deleteDoc(id) {
+  if (!confirm('Delete this document?')) return
+  try { await api('DELETE', `/chat/documents/${id}`); toast('Deleted'); loadDocuments() }
+  catch(e) { toast(e.message, 'error') }
+}
+
+// ── Boot ───────────────────────────────────────────────────────────────────
+async function init() {
+  const savedSecret = localStorage.getItem('bhl_admin')
+  if (savedSecret) $('adminSecretInput').value = savedSecret
+
+  try {
+    const data = await api('GET', '/projects', null, true)
+    S.projects = data || []
+    updateProjectSelect()
+    const savedId = localStorage.getItem('bhl_project_id')
+    if (savedId) {
+      const p = S.projects.find(x => x.id === savedId)
+      if (p) {
+        S.selectedProject = p
+        $('projectSelect').value = p.id
+        $('apiKeyDisplay').textContent = `Key: ${p.apiKey.slice(0, 20)}…`
+      }
+    }
+  } catch {}
+
+  showSection('agents')
+}
+
+init()
+</script>
+</body>
+</html>
